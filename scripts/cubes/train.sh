@@ -11,3 +11,4 @@ python train.py \
 --flip_edges 0.2 \
 --slide_verts 0.2 \
 --num_aug 20 \
+--lr 0.0003

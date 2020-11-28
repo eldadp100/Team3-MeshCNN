@@ -30,7 +30,7 @@ class ClassifierModel:
 
         # load/define networks
         self.net = networks.define_classifier(opt.input_nc, opt.ncf, opt.ninput_edges, opt.nclasses, opt,
-                                              self.gpu_ids, opt.arch, opt.init_type, opt.init_gain)
+                                              self.gpu_ids, opt.arch, opt.init_type, opt.init_gain).to(self.device)
         self.net.train(self.is_train)
         self.criterion = networks.define_loss(opt).to(self.device)
 
