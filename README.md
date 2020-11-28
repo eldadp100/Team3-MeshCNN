@@ -1,6 +1,3 @@
-<img src='docs/imgs/alien.gif' align="right" width=325>
-<br><br><br>
-
 # Forked MeshCNN Team 3
 
 ## Our changes - both 1 and 2 are big changes
@@ -53,7 +50,3 @@ bash ./scripts/human_seg/get_pretrained.sh
 bash ./scripts/human_seg/test.sh
 bash ./scripts/human_seg/view.sh
 ```
-
-Some segmentation result examples:
-
-<img src="/docs/imgs/shrec__10_0.png" height="150px"/> <img src="/docs/imgs/shrec__14_0.png" height="150px"/> <img src="/docs/imgs/shrec__2_0.png" height="150px"/> 
