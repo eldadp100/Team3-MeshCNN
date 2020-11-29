@@ -4,11 +4,7 @@
 python train.py \
 --dataroot datasets/cubes \
 --name cubes \
---ncf 64 128 256 256 \
---pool_res 600 450 300 210 \
---norm group \
---resblocks 1 \
---flip_edges 0.2 \
+--arch mesh_transformer \
 --slide_verts 0.2 \
 --num_aug 20 \
 --lr 0.0003
