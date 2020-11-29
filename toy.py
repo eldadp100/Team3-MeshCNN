@@ -46,7 +46,8 @@ mesh = mesh.Mesh(file=mesh_path, opt=opt, export_folder='.')
 print(mesh.edges_count)
 
 import torch
-from models.layers.mesh_conv import MeshConv, MeshSA, MeshEdgeEmbeddingLayer
+from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
+from models.layers.mesh_self_attention import MeshSA
 
 # from models.layers.mesh_conv_old import MeshConv
 sa = MeshSA(5, 5, 10)
@@ -111,7 +112,7 @@ class MeshTransformerNet(nn.Module):
         x = self.fc(x)
         return x
 
-net = MeshTransformerNet()
+net = MeshConvNet(norm_layer='group', nf0=10)
 print(net(a['x'], a['mesh']).shape)
 
 

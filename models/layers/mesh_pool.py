@@ -188,22 +188,22 @@ class MeshPool(nn.Module):
             features = features.unsqueeze(-1)
         features = features.view(features.shape[0], -1)
 
-        # change number 1!!!
-        # delete edges with smallest features[0] - which will act as collapsing flag
-        features_0 = features[0, :].unsqueeze(-1)
-        edge_ids = torch.arange(edges_count, device=features_0.device, dtype=torch.float32).unsqueeze(-1)
-        heap = torch.cat((features_0, edge_ids), dim=-1).tolist()
-        heapify(heap)
-        return heap
-
-        # # delete edges with smallest norm
-        # squared_magnitude = torch.sum(features * features, 0)
-        # if squared_magnitude.shape[-1] != 1:
-        #     squared_magnitude = squared_magnitude.unsqueeze(-1)
-        # edge_ids = torch.arange(edges_count, device=squared_magnitude.device, dtype=torch.float32).unsqueeze(-1)
-        # heap = torch.cat((squared_magnitude, edge_ids), dim=-1).tolist()
+        # # change number 1!!!
+        # # delete edges with smallest features[0] - which will act as collapsing flag
+        # features_0 = features[0, :].unsqueeze(-1)
+        # edge_ids = torch.arange(edges_count, device=features_0.device, dtype=torch.float32).unsqueeze(-1)
+        # heap = torch.cat((features_0, edge_ids), dim=-1).tolist()
         # heapify(heap)
         # return heap
+
+        # delete edges with smallest norm
+        squared_magnitude = torch.sum(features * features, 0)
+        if squared_magnitude.shape[-1] != 1:
+            squared_magnitude = squared_magnitude.unsqueeze(-1)
+        edge_ids = torch.arange(edges_count, device=squared_magnitude.device, dtype=torch.float32).unsqueeze(-1)
+        heap = torch.cat((squared_magnitude, edge_ids), dim=-1).tolist()
+        heapify(heap)
+        return heap
 
     @staticmethod
     def __union_groups(mesh, edge_groups, source, target):

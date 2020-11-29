@@ -1,7 +1,7 @@
 import time
 from options.train_options import TrainOptions
 from data import DataLoader
-from models import create_model, mesh_transformer
+from models import create_model
 from util.writer import Writer
 from test import run_test
 
@@ -10,7 +10,7 @@ if __name__ == '__main__':
     dataset = DataLoader(opt)
     dataset_size = len(dataset)
     print('#training meshes = %d' % dataset_size)
-    model = mesh_transformer.MeshTransformerNet()
+    model = create_model(opt)
     writer = Writer(opt)
     total_steps = 0
 

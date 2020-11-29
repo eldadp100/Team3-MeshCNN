@@ -3,7 +3,8 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
-from models.layers.mesh_conv import MeshConv, MeshSA, MeshEdgeEmbeddingLayer
+from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
+from models.layers.mesh_self_attention import MeshSA
 import torch.nn.functional as F
 from models.layers.mesh_pool import MeshPool
 from models.layers.mesh_unpool import MeshUnpool
@@ -104,7 +105,9 @@ def define_classifier(input_nc, ncf, ninput_edges, nclasses, opt, gpu_ids, arch,
     net = None
     norm_layer = get_norm_layer(norm_type=opt.norm, num_groups=opt.num_groups)
 
-    if arch == 'mconvnet':
+    if arch == 'mesh_transformer':
+        net = MeshTransformerNet()
+    elif arch == 'mconvnet':
         net = MeshConvNet(norm_layer, input_nc, ncf, nclasses, ninput_edges, opt.pool_res, opt.fc_n,
                           opt.resblocks)
     elif arch == 'meshunet':
@@ -129,26 +132,69 @@ def define_loss(opt):
 ##############################################################################
 # Classes For Classification / Segmentation Networks
 ##############################################################################
+#
+# class MeshConvNet(nn.Module):
+#     """Network for learning a global shape descriptor (classification)
+#     """
+#
+#     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
+#                  nresblocks=3, embd_size=16, sa_window_size=10):  # TODO: sa_window_size
+#         super(MeshConvNet, self).__init__()
+#         self.k = [nf0] + conv_res
+#         self.res = [input_res] + pool_res
+#         norm_args = get_norm_args(norm_layer, self.k[1:])
+#
+#         self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
+#         self.k[0] = embd_size
+#         self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
+#         self.dropout = nn.Dropout(p=0.2)
+#         for i, ki in enumerate(self.k[:-1]):
+#             setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=20))
+#             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
+#             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
+#             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
+#
+#         self.gp = torch.nn.AvgPool1d(self.res[-1])
+#         # self.gp = torch.nn.MaxPool1d(self.res[-1])
+#         self.fc1 = nn.Linear(self.k[-1], fc_n)
+#         self.fc2 = nn.Linear(fc_n, nclasses)
+#
+#     def forward(self, x, mesh):
+#         x = self.edges_embedding(x)
+#         x = self.sa_layer(x)
+#         for i in range(len(self.k) - 1):
+#             x = getattr(self, 'sa{}'.format(i))(x)
+#             x = getattr(self, 'conv{}'.format(i))(x, mesh)
+#             x = F.relu(x)
+#             x = self.dropout(x)
+#             x = getattr(self, 'norm{}'.format(i))(x)
+#             x = getattr(self, 'pool{}'.format(i))(x, mesh)
+#
+#         x = self.gp(x)
+#         x = x.view(-1, self.k[-1])
+#
+#         x = F.relu(self.fc1(x))
+#         x = self.fc2(x)
+#         return x
+
+
 
 class MeshConvNet(nn.Module):
     """Network for learning a global shape descriptor (classification)
     """
-
     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
-                 nresblocks=3, embd_size=16, sa_window_size=10):  # TODO: sa_window_size
+                 nresblocks=3):
         super(MeshConvNet, self).__init__()
         self.k = [nf0] + conv_res
         self.res = [input_res] + pool_res
         norm_args = get_norm_args(norm_layer, self.k[1:])
 
-        self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
-        self.k[0] = embd_size
-        self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
-        self.dropout = nn.Dropout(p=0.2)
         for i, ki in enumerate(self.k[:-1]):
+            setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, 20))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
+
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
@@ -156,13 +202,11 @@ class MeshConvNet(nn.Module):
         self.fc2 = nn.Linear(fc_n, nclasses)
 
     def forward(self, x, mesh):
-        x = self.edges_embedding(x)
-        x = self.sa_layer(x)
+
         for i in range(len(self.k) - 1):
+            x = getattr(self, 'sa{}'.format(i))(x)
             x = getattr(self, 'conv{}'.format(i))(x, mesh)
-            x = F.relu(x)
-            x = self.dropout(x)
-            x = getattr(self, 'norm{}'.format(i))(x)
+            x = F.relu(getattr(self, 'norm{}'.format(i))(x))
             x = getattr(self, 'pool{}'.format(i))(x, mesh)
 
         x = self.gp(x)
@@ -170,6 +214,45 @@ class MeshConvNet(nn.Module):
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
+        return x
+
+
+
+class MeshTransformerNet(nn.Module):
+    """ Mesh Transformer """
+
+    def __init__(self, embd_size=16, sa_window_size=10):
+        super(MeshTransformerNet, self).__init__()
+        self.k = [5, 40, 100, 150, 40]
+        self.res = [1000, 700, 500, 250]
+
+        self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
+        self.k[0] = embd_size
+        self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
+        self.dropout = nn.Dropout(p=0.2)
+        for i, ki in enumerate(self.k[:-1]):
+            setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=sa_window_size))
+            setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
+            setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
+
+        self.gp = torch.nn.AvgPool1d(self.res[-1])
+        # self.gp = torch.nn.MaxPool1d(self.res[-1])
+        self.fc = nn.Linear(self.k[-1], 35)
+        self.relu = nn.ReLU()
+
+    def forward(self, x, mesh):
+        x = self.edges_embedding(x)
+        x = self.sa_layer(x)
+        for i in range(len(self.k) - 1):
+            x = getattr(self, 'sa{}'.format(i))(x)
+            x = getattr(self, 'conv{}'.format(i))(x, mesh)
+            x = self.relu(x)
+            x = self.dropout(x)
+            x = getattr(self, 'pool{}'.format(i))(x, mesh)
+
+        x = self.gp(x)
+        x = x.view(-1, self.k[-1])
+        x = self.fc(x)
         return x
 
 
