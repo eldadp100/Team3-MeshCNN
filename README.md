@@ -1,4 +1,4 @@
-# Forked MeshCNN Team 3
+# The Transformer MeshCNN - Team 3
 
 We did some big changes - the most significant one is the self attention addition (with patching to overcome the memory issues).
 
