@@ -1,9 +1,11 @@
 # Forked MeshCNN Team 3
 
 We did some big changes - the most significant one is the self attention addition (with patching to overcome the memory issues).
-We got on CUBES:
 
-And on HUMANS:
+* Test Accuracy on CUBES (average of best 5 in 100 epochs):
+
+* Test Accuracy on HUMANS (average of best 5 in 100 epochs):
+
 
 with almost same amount of parameters!
 We get faster converges and higher stability then the original MeshCNN on CUBES.
@@ -13,6 +15,9 @@ We get faster converges and higher stability then the original MeshCNN on CUBES.
 3. replaced neighborhood symetric transformations (|a-c|, a+c, |b-d|, b+d, e) with simple average (as in GCN) - (a+b+c+d+e)/5
 4. 
 5. changed the pooling critiria to first feature value only but it didn't helped - commented
+
+
+
 
 
 ### Installation
