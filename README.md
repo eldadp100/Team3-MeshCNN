@@ -1,7 +1,14 @@
 # Forked MeshCNN Team 3
 
-## Our changes - both 1 and 2 are big changes
+We did some big changes - the most significant one is the self attention addition (with patching to overcome the memory issues).
+We got on CUBES:
+And on HUMANS:
+with almost same amount of parameters!  
+
+## Our changes
 1. replaced neighborhood 2d convolution by fully connected layer which increased performence and network expesiveness
+2. replaced neighborhood symetric transformations (|a-c|, a+c, |b-d|, b+d, e) with simple average (as in GCN) - (a+b+c+d+e)/5
+3. 
 2. added self attention - we used patched self attention to save memory. The adaption of the self attention technique is straight forward as shown (in meshConv.py, TODO: move it to separate file).
 3. changed the pooling critiria to first feature value only
 
