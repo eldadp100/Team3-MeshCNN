@@ -25,10 +25,6 @@ Run training (if using conda env first activate env e.g. ```source activate mesh
 ```bash
 bash ./scripts/cubes/train.sh
 ```
-or by:
-```
-python train.py --dataroot datasets/cubes --name cubes --arch mesh_transformer --flip_edges 0.2 --slide_verts 0.2 --num_aug 20
-```
 
 To view the training loss plots, in another terminal run ```tensorboard --logdir runs``` and click [http://localhost:6006](http://localhost:6006).
 
