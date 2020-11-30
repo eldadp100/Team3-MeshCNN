@@ -44,7 +44,7 @@ class MeshConv(nn.Module):
     def __init__(self, edge_in_feat, edge_out_feat, kernel_size=1, bias=True):
         super(MeshConv, self).__init__()
         # we support only kernel_size=1...
-        self.lin = MeshLinearLayer(edge_in_feat * 5, edge_out_feat, bias=bias)
+        self.lin = MeshLinearLayer(edge_in_feat, edge_out_feat, bias=bias)
 
     def __call__(self, edge_f, mesh):
         return self.forward(edge_f, mesh)
@@ -101,8 +101,9 @@ class MeshConv(nn.Module):
         x_2 = f[:, :, :, 2] + f[:, :, :, 4]
         x_3 = torch.abs(f[:, :, :, 1] - f[:, :, :, 3])
         x_4 = torch.abs(f[:, :, :, 2] - f[:, :, :, 4])
-        f = torch.stack([f[:, :, :, 0], x_1, x_2, x_3, x_4], dim=3)
-        return f
+        # f = torch.stack([f[:, :, :, 0], x_1, x_2, x_3, x_4], dim=3)
+        f = sum([f[:, :, :, i] for i in range(5)]) / 5.0
+        return f.unsqueeze(-1)
 
     def pad_gemm(self, m, xsz, device):
         """ extracts one-ring neighbors (4x) -> m.gemm_edges

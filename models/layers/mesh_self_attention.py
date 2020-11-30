@@ -5,12 +5,14 @@ import torch.nn as nn
 class SA_Layer(nn.Module):
     """ for 1 dim sequences """
 
-    def __init__(self, elem_size, embd_size):
+    def __init__(self, elem_size, embd_size, use_V=False):
         super(SA_Layer, self).__init__()
+        self.use_V = use_V
         self.embd_size = embd_size
         self.query_lin = nn.Linear(elem_size, embd_size)
         self.key_lin = nn.Linear(elem_size, embd_size)
-        self.value_lin = nn.Linear(elem_size, embd_size)
+        if self.use_V:
+            self.value_lin = nn.Linear(elem_size, embd_size)
         self.softmax = nn.Softmax(dim=1)
         # self.res_con_p = nn.Parameter(torch.rand(1) / 5, requires_grad=False)
 
@@ -18,11 +20,15 @@ class SA_Layer(nn.Module):
         N, seq_size, elem_size = x.shape
         seq_queries = self.query_lin(x)
         seq_keys = self.key_lin(x)
-        out = torch.empty(N, seq_size, self.embd_size)  # empty to save grads
+        output_element_size = self.embd_size if self.use_V else elem_size
+        out = torch.empty(N, seq_size, output_element_size)  # empty to save grads
         for i in range(N):
             curr_q = seq_queries[i]
             curr_k = seq_keys[i]
-            curr_v = self.value_lin(x[i])
+            if self.use_V:
+                curr_v = self.value_lin(x[i])
+            else:
+                curr_v = x[i]
             attention_mat = torch.mm(curr_q, torch.transpose(curr_k, 1, 0))
             attention = self.softmax(attention_mat)  # softmax for each row
             final_rep = torch.mm(attention, curr_v)
@@ -31,15 +37,17 @@ class SA_Layer(nn.Module):
 
 
 class Patched_SA_Layer(nn.Module):
-    def __init__(self, elem_size, embd_size, window_size):
+    def __init__(self, elem_size, embd_size, window_size, use_V=False):
         super(Patched_SA_Layer, self).__init__()
-        self.sa_layer = SA_Layer(elem_size, embd_size)
+        self.sa_layer = SA_Layer(elem_size, embd_size, use_V=use_V)
         self.window_size = window_size
         self.embd_size = embd_size
+        self.use_V = use_V
 
     def forward(self, x):
         N, seq_size, elem_size = x.shape
-        out = torch.empty(N, seq_size, self.embd_size)
+        output_element_size = self.embd_size if self.use_V else elem_size
+        out = torch.empty(N, seq_size, output_element_size)
         patches_num = seq_size // self.window_size
         add_patch = False
         if seq_size % self.window_size != 0:
@@ -80,4 +88,4 @@ class MeshSA(nn.Module):
 if __name__ == '__main__':
     sa_layer = Patched_SA_Layer(10, 7, 21)
     a = torch.rand(32, 100, 10)  # seq of 5 elems
-    print(sa_layer(a))
+    print(sa_layer(a).shape)

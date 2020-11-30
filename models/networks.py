@@ -178,28 +178,31 @@ def define_loss(opt):
 #         return x
 
 
-
 class MeshConvNet(nn.Module):
     """Network for learning a global shape descriptor (classification)
     """
+
     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
                  nresblocks=3):
         super(MeshConvNet, self).__init__()
         self.k = [nf0] + conv_res
         self.res = [input_res] + pool_res
         norm_args = get_norm_args(norm_layer, self.k[1:])
+        self.sa_embd_size = 64
+        self.sa_window = 20
+        self.dropout = nn.Dropout(p=0.2)
 
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, 20))
+            setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, self.sa_window))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
-
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
         self.fc1 = nn.Linear(self.k[-1], fc_n)
         self.fc2 = nn.Linear(fc_n, nclasses)
+        print(self)
 
     def forward(self, x, mesh):
 
@@ -217,7 +220,6 @@ class MeshConvNet(nn.Module):
         return x
 
 
-
 class MeshTransformerNet(nn.Module):
     """ Mesh Transformer """
 
@@ -230,8 +232,10 @@ class MeshTransformerNet(nn.Module):
         self.k[0] = embd_size
         self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
         self.dropout = nn.Dropout(p=0.2)
+        self.sa_embd_size = 64
+
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=sa_window_size))
+            setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, window_size=sa_window_size))
             setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
 
