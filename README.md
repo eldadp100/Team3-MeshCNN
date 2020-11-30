@@ -2,6 +2,8 @@
 
 We did some big changes - the most significant one is the self attention addition (with patching to overcome the memory issues).
 
+We used the classification as benchmark and got improvement also on the segmentation task. 
+
 * Test Accuracy on CUBES (average of best 5 in 100 epochs):
 
 * Test Accuracy on HUMANS (average of best 5 in 100 epochs):
