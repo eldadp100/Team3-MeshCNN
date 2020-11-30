@@ -6,7 +6,7 @@ We got on CUBES:
 And on HUMANS:
 
 with almost same amount of parameters!
-We get way faster converges and higher stability then the original MeshCNN on CUBES.
+We get faster converges and higher stability then the original MeshCNN on CUBES.
 
 ## Our changes
 1. added self attention - we used patched self attention to save memory. The adaption of the self attention technique is straight forward as shown (in meshConv.py, TODO: move it 2. replaced neighborhood 2d convolution by fully connected layer which increased performence and network expesiveness
