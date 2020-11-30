@@ -17,7 +17,8 @@ We get faster converges and higher stability then the original MeshCNN on CUBES.
  
  * replaced neighborhood 2d convolution by fully connected layer which increased performence and network expesiveness without
  * replaced neighborhood symetric transformations (|a-c|, a+c, |b-d|, b+d, e) with simple average (as in GCN): (a+b+c+d+e)/5
- * 
+ * we used BN instead GN as BN known to outperform GN and we don't separate among multiple GPUs (so GN is not needed in our case)
+    * And fixed bug in the original code related to 
  * changed the pooling critiria to first feature value only but it didn't helped - commented
 
 
