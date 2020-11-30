@@ -23,7 +23,8 @@ We get faster converges and higher stability then the original MeshCNN on CUBES.
 
 
 
-
+## Setup
+look at the original repository for more info: ranahanocka/MeshCNN
 ### Installation
 - Clone this repo:
 ```bash
