@@ -13,14 +13,18 @@ with almost same amount of parameters!
 We get faster converges and higher stability then the original MeshCNN on CUBES.
 
 ## Our changes
- * self attention:
+We porposed the use of the following two layers that we adapt to the mesh scenario. The first one is self attention layer that has the problem of memory consuming - to handle that we used patched self attention. We implemented a multi head self attention. The second is to use LSTM to go over the mesh edges in some order and rout information from one edge to another. The idea of using LSTM to globalize the patched (local) self attention is first introduced here. We use a circular LSTM which is applying LSTM several times while we keep the state of the previous iteration and use it as a start to the next (different from bidirectional LSTMs but with same motivation).
+
+ * self attention (/models/layers/mesh_self_attention.py):
     * implemented based on patched self attention to save memory. 
-    * The adaption of the self attention technique is straight forward as shown (in /models/layers/mesh_self_attention.py).
- 
- * replaced neighborhood 2d convolution by fully connected layer which increased performence and network expesiveness without
+    * multi head.
+ * LSTM
+    * to globalize the self attention information routing
+    * circular LSTM
+ * replaced 2d convolution on neighborhood by fully-connected layer which increased performence and network expesiveness.
  * replaced neighborhood symetric transformations (|a-c|, a+c, |b-d|, b+d, e) with simple average (as in GCN): (a+b+c+d+e)/5
- * we used BN instead GN as BN known to outperform GN and we don't separate among multiple GPUs (so GN is not needed in our case)
-    * And fixed bug in the original code related to BN
+ * we used BN instead GN as BN known to outperform GN - as we don't separate among multiple GPUs (so GN is not needed in our case)
+    * fixed bug in the original code related to BN
  * changed the pooling critiria to first feature value only but it didn't helped - commented
 
 
