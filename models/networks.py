@@ -5,6 +5,7 @@ import functools
 from torch.optim import lr_scheduler
 from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
 from models.layers.mesh_self_attention import MeshSA
+from models.layers.mesh_circular_layer import CircularMeshLSTM
 import torch.nn.functional as F
 from models.layers.mesh_pool import MeshPool
 from models.layers.mesh_unpool import MeshUnpool
@@ -34,7 +35,7 @@ def get_norm_args(norm_layer, nfeats_list):
         norm_args = [{'fake': True} for f in nfeats_list]
     elif norm_layer.func.__name__ == 'GroupNorm':
         norm_args = [{'num_channels': f} for f in nfeats_list]
-    elif norm_layer.func.__name__ == 'BatchNorm':
+    elif norm_layer.func.__name__ == 'BatchNorm2d':
         norm_args = [{'num_features': f} for f in nfeats_list]
     else:
         raise NotImplementedError('normalization layer [%s] is not found' % norm_layer.func.__name__)
@@ -188,14 +189,18 @@ class MeshConvNet(nn.Module):
         self.k = [nf0] + conv_res
         self.res = [input_res] + pool_res
         norm_args = get_norm_args(norm_layer, self.k[1:])
-        self.sa_embd_size = 64
+        self.sa_embd_size = self.lstm_hidden_size = 64
         self.sa_window = 20
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=0.5)
+        self.lstm_num_layers = 2
 
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, self.sa_window))
-            setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
-            setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
+            # setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, self.sa_window))
+            setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, self.lstm_hidden_size, self.k[i+1], self.lstm_num_layers))
+            # if i> 0:
+            #     setattr(self, 'sa_norm{}'.format(i), norm_layer(**norm_args[i-1]))
+            # setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
+            setattr(self, 'conv_norm{}'.format(i), norm_layer(**norm_args[i]))
             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
@@ -207,9 +212,15 @@ class MeshConvNet(nn.Module):
     def forward(self, x, mesh):
 
         for i in range(len(self.k) - 1):
-            x = getattr(self, 'sa{}'.format(i))(x)
-            x = getattr(self, 'conv{}'.format(i))(x, mesh)
-            x = F.relu(getattr(self, 'norm{}'.format(i))(x))
+            x = getattr(self, 'sa{}'.format(i))(x)  # local information routing
+            x = getattr(self, 'cirLSTM{}'.format(i))(x)  # try to globalize the information routing
+            # x = F.relu(x)
+            # if i> 0:
+            #     x = F.relu(getattr(self, 'sa_norm{}'.format(i))(x))  # local information routing
+            # x = getattr(self, 'conv{}'.format(i))(x, mesh)
+            # x = self.dropout(x)
+            x = getattr(self, 'conv_norm{}'.format(i))(x.unsqueeze(-1))
+            x = F.relu(x)
             x = getattr(self, 'pool{}'.format(i))(x, mesh)
 
         x = self.gp(x)

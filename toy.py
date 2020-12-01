@@ -3,6 +3,7 @@ import functools
 from models.layers import mesh
 import argparse
 
+from models.layers.mesh_circular_layer import CircularMeshLSTM
 from models.layers.mesh_pool import MeshPool
 from models.networks import MeshConvNet
 
@@ -89,6 +90,7 @@ class MeshTransformerNet(nn.Module):
         self.dropout = nn.Dropout(p=0.2)
         for i, ki in enumerate(self.k[:-1]):
             setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=sa_window_size))
+            setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, 220, self.k[i+1], 1))
             setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
 
@@ -102,17 +104,18 @@ class MeshTransformerNet(nn.Module):
         x = self.sa_layer(x)
         for i in range(len(self.k) - 1):
             x = getattr(self, 'sa{}'.format(i))(x)
-            x = getattr(self, 'conv{}'.format(i))(x, mesh)
-            x = self.relu(x)
-            x = self.dropout(x)
+            x = getattr(self, 'cirLSTM{}'.format(i))(x)
+            # x = getattr(self, 'conv{}'.format(i))(x, mesh)
+            # x = self.relu(x)
+            # x = self.dropout(x)
             x = getattr(self, 'pool{}'.format(i))(x, mesh)
 
         x = self.gp(x)
-        x = x.view(-1, self.k[-1])
+        x = x.reshape(x.shape[0], -1)
         x = self.fc(x)
         return x
 
-net = MeshConvNet(norm_layer='group', nf0=10)
+net = MeshTransformerNet()
 print(net(a['x'], a['mesh']).shape)
 
 
