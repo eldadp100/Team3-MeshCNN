@@ -27,8 +27,16 @@ We porposed the use of the following two layers that we adapt to the mesh scenar
     * fixed bug in the original code related to BN
  * changed the pooling critiria to first feature value only but it didn't helped - commented
 
-
-
+## Results on CUBES
+The metioned accuracy is the average of best 5 over 100 epochs. 
+### Original
+The original code test accuracy is 93%.
+### Bottom Line
+with all the changes the test accuracy is  
+### LSTM
+we see that by using the porposed LSTM layer only (without using anything else) we got test accuracy of 
+### Self attention and LSTM
+by adding the multi-head self attention layer before the LSTM the accuracy raised to 
 
 ## Setup
 look at the original repository for more info: ranahanocka/MeshCNN
