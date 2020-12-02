@@ -14,6 +14,7 @@ We get faster converges and higher stability then the original MeshCNN on CUBES.
 
 ## Our changes
 We porposed the use of the following two layers that we adapt to the mesh scenario. The first one is self attention layer that has the problem of memory consuming - to handle that we used patched self attention. We implemented a multi head self attention. The second is to use LSTM to go over the mesh edges in some order and rout information from one edge to another. The idea of using LSTM to globalize the patched (local) self attention is first introduced here. We use a circular LSTM which is applying LSTM several times while we keep the state of the previous iteration and use it as a start to the next (different from bidirectional LSTMs but with same motivation).
+We think that combining those ideas with the original mesh convolutional layer might outperform the current SOTA as they give another directions to adapt classical ideas to meshes.
 
  * self attention (/models/layers/mesh_self_attention.py):
     * implemented based on patched self attention to save memory. 
@@ -34,7 +35,7 @@ The original code test accuracy is 93%.
 ### Bottom Line
 with all the changes the test accuracy is  
 ### LSTM
-we see that by using the porposed LSTM layer only (without using anything else) we got test accuracy of 
+we see that by using the porposed LSTM layer only (without using anything else) we got test accuracy of 82%
 ### Self attention and LSTM
 by adding the multi-head self attention layer before the LSTM the accuracy raised to 
 
