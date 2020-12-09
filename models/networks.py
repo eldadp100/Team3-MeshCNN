@@ -9,6 +9,7 @@ from models.layers.mesh_circular_layer import CircularMeshLSTM
 import torch.nn.functional as F
 from models.layers.mesh_pool import MeshPool
 from models.layers.mesh_unpool import MeshUnpool
+from models.layers.mesh_pool_sa import MeshPoolSA
 
 
 ###############################################################################
@@ -150,10 +151,11 @@ def define_loss(opt):
 #         self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
 #         self.dropout = nn.Dropout(p=0.2)
 #         for i, ki in enumerate(self.k[:-1]):
-#             setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=20))
+#             setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=35))
 #             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
 #             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
-#             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
+#             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.k[i + 1]))
+#             # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
 #
 #         self.gp = torch.nn.AvgPool1d(self.res[-1])
 #         # self.gp = torch.nn.MaxPool1d(self.res[-1])
@@ -162,14 +164,15 @@ def define_loss(opt):
 #
 #     def forward(self, x, mesh):
 #         x = self.edges_embedding(x)
-#         x = self.sa_layer(x)
+#         x, _ = self.sa_layer(x)
 #         for i in range(len(self.k) - 1):
-#             x = getattr(self, 'sa{}'.format(i))(x)
+#             x, sa_mat = getattr(self, 'sa{}'.format(i))(x)
 #             x = getattr(self, 'conv{}'.format(i))(x, mesh)
 #             x = F.relu(x)
 #             x = self.dropout(x)
 #             x = getattr(self, 'norm{}'.format(i))(x)
-#             x = getattr(self, 'pool{}'.format(i))(x, mesh)
+#             x = getattr(self, 'sa_pool{}'.format(i))(x, sa_mat)
+#             # x = getattr(self, 'pool{}'.format(i))(x, mesh)
 #
 #         x = self.gp(x)
 #         x = x.view(-1, self.k[-1])
@@ -182,46 +185,36 @@ def define_loss(opt):
 class MeshConvNet(nn.Module):
     """Network for learning a global shape descriptor (classification)
     """
-
     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
                  nresblocks=3):
         super(MeshConvNet, self).__init__()
         self.k = [nf0] + conv_res
         self.res = [input_res] + pool_res
         norm_args = get_norm_args(norm_layer, self.k[1:])
-        self.sa_embd_size = self.lstm_hidden_size = 64
-        self.sa_window = 20
-        self.dropout = nn.Dropout(p=0.5)
-        self.lstm_num_layers = 2
 
         for i, ki in enumerate(self.k[:-1]):
-            # setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, self.sa_window))
-            setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, self.lstm_hidden_size, self.k[i+1], self.lstm_num_layers))
-            # if i> 0:
-            #     setattr(self, 'sa_norm{}'.format(i), norm_layer(**norm_args[i-1]))
-            # setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
-            setattr(self, 'conv_norm{}'.format(i), norm_layer(**norm_args[i]))
-            setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
+            setattr(self, 'sa{}'.format(i), MeshSA(ki, 64, 35))
+            setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
+            setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
+            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.k[i + 1]))
+            # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
+
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
         self.fc1 = nn.Linear(self.k[-1], fc_n)
         self.fc2 = nn.Linear(fc_n, nclasses)
+
         print(self)
 
     def forward(self, x, mesh):
 
         for i in range(len(self.k) - 1):
-            x = getattr(self, 'sa{}'.format(i))(x)  # local information routing
-            x = getattr(self, 'cirLSTM{}'.format(i))(x)  # try to globalize the information routing
-            # x = F.relu(x)
-            # if i> 0:
-            #     x = F.relu(getattr(self, 'sa_norm{}'.format(i))(x))  # local information routing
-            # x = getattr(self, 'conv{}'.format(i))(x, mesh)
-            # x = self.dropout(x)
-            x = getattr(self, 'conv_norm{}'.format(i))(x.unsqueeze(-1))
-            x = F.relu(x)
-            x = getattr(self, 'pool{}'.format(i))(x, mesh)
+            x, sa_mat = getattr(self, 'sa{}'.format(i))(x)
+            x = getattr(self, 'conv{}'.format(i))(x, mesh)
+            x = F.relu(getattr(self, 'norm{}'.format(i))(x))
+            x = getattr(self, 'sa_pool{}'.format(i))(x, mesh, sa_mat)
+            # x = getattr(self, 'pool{}'.format(i))(x, mesh)
 
         x = self.gp(x)
         x = x.view(-1, self.k[-1])
@@ -229,6 +222,58 @@ class MeshConvNet(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
+
+# class MeshConvNet(nn.Module):
+#     """Network for learning a global shape descriptor (classification)
+#     """
+#
+#     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
+#                  nresblocks=3):
+#         super(MeshConvNet, self).__init__()
+#         self.k = [nf0] + conv_res
+#         self.res = [input_res] + pool_res
+#         norm_args = get_norm_args(norm_layer, self.k[1:])
+#         self.sa_embd_size = self.lstm_hidden_size = 64
+#         self.sa_window = 20
+#         self.dropout = nn.Dropout(p=0.5)
+#         self.lstm_num_layers = 2
+#
+#         for i, ki in enumerate(self.k[:-1]):
+#             # setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, self.sa_window))
+#             setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, self.lstm_hidden_size, self.k[i+1], self.lstm_num_layers))
+#             # if i> 0:
+#             #     setattr(self, 'sa_norm{}'.format(i), norm_layer(**norm_args[i-1]))
+#             # setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
+#             setattr(self, 'conv_norm{}'.format(i), norm_layer(**norm_args[i]))
+#             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
+#
+#         self.gp = torch.nn.AvgPool1d(self.res[-1])
+#         # self.gp = torch.nn.MaxPool1d(self.res[-1])
+#         self.fc1 = nn.Linear(self.k[-1], fc_n)
+#         self.fc2 = nn.Linear(fc_n, nclasses)
+#         print(self)
+#
+#     def forward(self, x, mesh):
+#
+#         for i in range(len(self.k) - 1):
+#             x = getattr(self, 'sa{}'.format(i))(x)  # local information routing
+#             x = getattr(self, 'cirLSTM{}'.format(i))(x)  # try to globalize the information routing
+#             # x = F.relu(x)
+#             # if i> 0:
+#             #     x = F.relu(getattr(self, 'sa_norm{}'.format(i))(x))  # local information routing
+#             # x = getattr(self, 'conv{}'.format(i))(x, mesh)
+#             # x = self.dropout(x)
+#             x = getattr(self, 'conv_norm{}'.format(i))(x.unsqueeze(-1))
+#             x = F.relu(x)
+#             x = getattr(self, 'pool{}'.format(i))(x, mesh)
+#
+#         x = self.gp(x)
+#         x = x.view(-1, self.k[-1])
+#
+#         x = F.relu(self.fc1(x))
+#         x = self.fc2(x)
+#         return x
 
 
 class MeshTransformerNet(nn.Module):

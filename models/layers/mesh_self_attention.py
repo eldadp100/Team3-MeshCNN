@@ -24,6 +24,7 @@ class SA_Layer(nn.Module):
         seq_keys = self.key_lin(x)
         output_element_size = self.embd_size if self.use_V else elem_size
         out = torch.empty(N, seq_size, output_element_size).to(x.device)  # empty to save grads
+        attention_matrices = []
         for i in range(N):
             curr_q = seq_queries[i]
             curr_k = seq_keys[i]
@@ -33,12 +34,15 @@ class SA_Layer(nn.Module):
                 curr_v = x[i]
             attention_mat = torch.mm(curr_q, torch.transpose(curr_k, 1, 0))
             attention = self.softmax(attention_mat)  # softmax for each row
+            attention_matrices.append(attention)
             final_rep = torch.mm(attention, curr_v)
             out[i] = final_rep  # + self.res_con_p * curr_v
 
+        final_att_mat = torch.stack(attention_matrices)
+
         if self.use_res_conn:
             out = self.res_dropout(x) + out
-        return out
+        return out, final_att_mat
 
 
 class Patched_SA_Layer(nn.Module):
@@ -55,6 +59,9 @@ class Patched_SA_Layer(nn.Module):
         out = torch.empty(N, seq_size, output_element_size)
         patches_num = seq_size // self.window_size
         add_patch = False
+
+        attention_matrix = torch.empty((N, seq_size, self.window_size))
+
         if seq_size % self.window_size != 0:
             add_patch = True
 
@@ -67,12 +74,14 @@ class Patched_SA_Layer(nn.Module):
                 rest_seq_padded[0, :len(rest_seq), :] = rest_seq
                 curr_x_patches = torch.cat([curr_x_patches, rest_seq_padded], dim=0)
             # curr_x_patches.requires_grad = x.requires_grad
-            curr_x_patches = self.sa_layer(curr_x_patches)  # get patches as batch
+            curr_x_patches, attention_matrix_i = self.sa_layer(curr_x_patches)  # get patches as batch
 
             out[i, :] = curr_x_patches.reshape(curr_x_patches.shape[0] * curr_x_patches.shape[1],
                                                curr_x_patches.shape[2])[:seq_size]
+            attention_matrix[i, :, :] = attention_matrix_i.reshape(attention_matrix_i.shape[0] * attention_matrix_i.shape[1],
+                                               attention_matrix_i.shape[2])[:seq_size]
 
-        return out
+        return out, attention_matrix
 
 
 class MeshSA(nn.Module):
@@ -90,12 +99,17 @@ class MeshSA(nn.Module):
     def forward(self, edges_features):
         device = edges_features.device
         edges_features = edges_features.permute(0, 2, 1)  # put seq in place (before elem)
-        out = self.sa_heads[0](edges_features)
+        out, attention_matrix = self.sa_heads[0](edges_features)
         if self.heads > 1:
             for i in range(1, self.heads):
-                out += self.sa_heads[i](edges_features)
+                out_i, attention_matrix_i = self.sa_heads[i](edges_features)
+                out += out_i
+                attention_matrix += attention_matrix_i
+            attention_matrix /= self.heads
             out /= self.heads
-        return out.permute(0, 2, 1).to(device)  # permute back
+        # return out.permute(0, 2, 1).to(device)  # permute back
+        return out.permute(0, 2, 1).to(device), attention_matrix.to(device)
+
 
 
 if __name__ == '__main__':

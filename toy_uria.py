@@ -5,9 +5,12 @@ import argparse
 
 from models.layers.mesh_circular_layer import CircularMeshLSTM
 from models.layers.mesh_pool import MeshPool
-from models.networks import MeshConvNet, MResConv
+from models.networks import MeshConvNet
 from models.layers.mesh_pool_sa import MeshPoolSA
 
+import torch
+from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
+from models.layers.mesh_self_attention import MeshSA
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--print_freq', type=int, default=10, help='frequency of showing training results on console')
@@ -44,127 +47,85 @@ parser.add_argument('--resblocks')
 
 opt = parser.parse_args()
 
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+
 mesh_path = 'tree_98.obj'
 mesh = mesh.Mesh(file=mesh_path, opt=opt, export_folder='.')
 print(mesh.edges_count)
 
-import torch
-from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
-from models.layers.mesh_self_attention import MeshSA
+
 
 # from models.layers.mesh_conv_old import MeshConv
-sa = MeshSA(5, 5, 10)
-mc = MeshConv(5, 15)
+# sa = MeshSA(5, 5, 10)
+# mc = MeshConv(5, 15)
 # a = torch.rand(1, 750, 5)
 import pickle
 
 with open('input_a.p', 'rb') as f:
-    a = torch.load(f, map_location='cpu')
-embd_layer = MeshEdgeEmbeddingLayer(5, 10)
-print(a['x'].shape)
-print(embd_layer(a['x']).shape)
-print(sa(a['x'])[0].shape)
-
-
-print(a['x'].shape)
-o = mc(a['x'], a['mesh'])
-print(o.shape)
+    a = torch.load(f, map_location=device)
+# embd_layer = MeshEdgeEmbeddingLayer(5, 10)
+# print(a['x'].shape)
+# print(embd_layer(a['x']).shape)
+# print(sa(a['x'])[0].shape)
+#
+#
+# print(a['x'].shape)
+# o = mc(a['x'], a['mesh'])
+# print(o.shape)
 
 from torch import nn
 
 norm_layer = functools.partial(nn.GroupNorm, affine=True, num_groups=1)
 
 
-
-
-
-# class MeshTransformerNet(nn.Module):
-#     """ Mesh Transformer """
-#
-#     def __init__(self, embd_size=16, sa_window_size=10):  # TODO: sa_window_size
-#         super(MeshTransformerNet, self).__init__()
-#         self.k = [5, 10, 20, 40]
-#         self.res = [600, 450, 300, 210]
-#
-#         self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
-#         self.k[0] = embd_size
-#         self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
-#         self.dropout = nn.Dropout(p=0.2)
-#         for i, ki in enumerate(self.k[:-1]):
-#             setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=sa_window_size))
-#             setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, 220, self.k[i+1], 1))
-#             setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
-#             # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
-#             setattr(self, 'saPool{}'.format(i), MeshPoolSA(self.res[i]))
-#
-#         self.gp = torch.nn.AvgPool1d(self.res[-1])
-#         # self.gp = torch.nn.MaxPool1d(self.res[-1])
-#         self.fc = nn.Linear(self.k[-1], 35)
-#         self.relu = nn.ReLU()
-#
-#     def forward(self, x, mesh):
-#         x = self.edges_embedding(x)
-#         x, _ = self.sa_layer(x)
-#         for i in range(len(self.k) - 1):
-#             x, att_mat = getattr(self, 'sa{}'.format(i))(x)
-#             x = getattr(self, 'cirLSTM{}'.format(i))(x)
-#             # x = getattr(self, 'conv{}'.format(i))(x, mesh)
-#             # x = self.relu(x)
-#             # x = self.dropout(x)
-#             x = getattr(self, 'saPool{}'.format(i))(x, mesh, att_mat)
-#
-#         x = self.gp(x)
-#         x = x.reshape(x.shape[0], -1)
-#         x = self.fc(x)
-#         return x
-
-
 class MeshTransformerNet(nn.Module):
-    """Network for learning a global shape descriptor (classification)
-    """
-    def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
-                 nresblocks=3):
-        super(MeshConvNet, self).__init__()
-        self.k = [nf0] + conv_res
-        self.res = [input_res] + pool_res
-        # norm_args = get_norm_args(norm_layer, self.k[1:])
+    """ Mesh Transformer """
 
+    def __init__(self, embd_size=16, sa_window_size=10):  # TODO: sa_window_size
+        super(MeshTransformerNet, self).__init__()
+        self.k = [5, 10, 20, 40]
+        self.res = [600, 450, 300, 210]
+
+        self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
+        self.k[0] = embd_size
+        self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
+        self.dropout = nn.Dropout(p=0.2)
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, 64, 35))
-            setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
-            # setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
-            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.k[i + 1]))
-            # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
-
+            setattr(self, 'sa{}'.format(i), MeshSA(self.k[i + 1], self.k[i + 1], window_size=sa_window_size))
+            # setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, 220, self.k[i+1], 1))
+            setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
+            # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
+            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i]))
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
-        self.fc1 = nn.Linear(self.k[-1], fc_n)
-        self.fc2 = nn.Linear(fc_n, nclasses)
-
-        print(self)
+        self.fc = nn.Linear(self.k[-1], 35)
+        self.relu = nn.ReLU()
 
     def forward(self, x, mesh):
-
+        # x = self.edges_embedding(x)
+        # x, _ = self.sa_layer(x)
         for i in range(len(self.k) - 1):
-            x, sa_mat = getattr(self, 'sa{}'.format(i))(x)
-            x = getattr(self, 'conv{}'.format(i))(x, mesh)
-            x = nn.ReLU()(getattr(self, 'norm{}'.format(i))(x))
-            x = getattr(self, 'sa_pool{}'.format(i))(x, mesh, sa_mat)
-            # x = getattr(self, 'pool{}'.format(i))(x, mesh)
+            getattr(self, 'conv{}'.format(i))(x, mesh)
+            x, att_mat = getattr(self, 'sa{}'.format(i))(x)
+            # x = getattr(self, 'cirLSTM{}'.format(i))(x)
+            # x = getattr(self, 'conv{}'.format(i))(x, mesh)
+            # x = self.relu(x)
+            # x = self.dropout(x)
+            x = getattr(self, 'sa_pool{}'.format(i))(x, mesh, att_mat)
 
         x = self.gp(x)
-        x = x.view(-1, self.k[-1])
-
-        x = nn.ReLU()(self.fc1(x))
-        x = self.fc2(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.fc(x)
         return x
 
 
-net = MeshTransformerNet()
+net = MeshTransformerNet().to(device)
+# net = net.to(device)
+# a = a.to(device)
 print(net(a['x'], a['mesh']).shape)
-
-
 
 
 #
