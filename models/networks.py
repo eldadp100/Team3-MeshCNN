@@ -196,7 +196,7 @@ class MeshConvNet(nn.Module):
             setattr(self, 'sa{}'.format(i), MeshSA(ki, 64, 35))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
-            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.k[i + 1]))
+            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
             # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
 
 

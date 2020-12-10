@@ -11,6 +11,7 @@ from models.layers.mesh_pool_sa import MeshPoolSA
 import torch
 from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
 from models.layers.mesh_self_attention import MeshSA
+import torch.nn.functional as F
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--print_freq', type=int, default=10, help='frequency of showing training results on console')
@@ -93,11 +94,13 @@ class MeshTransformerNet(nn.Module):
         self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
         self.dropout = nn.Dropout(p=0.2)
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(self.k[i + 1], self.k[i + 1], window_size=sa_window_size))
+            # setattr(self, 'sa{}'.format(i), MeshSA(self.k[i + 1], self.k[i + 1], window_size=sa_window_size))
+            setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=sa_window_size))
             # setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, 220, self.k[i+1], 1))
+            # setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
             setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
             # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
-            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i]))
+            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
@@ -105,11 +108,11 @@ class MeshTransformerNet(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x, mesh):
-        # x = self.edges_embedding(x)
-        # x, _ = self.sa_layer(x)
+        x = self.edges_embedding(x)
+        x, _ = self.sa_layer(x)
         for i in range(len(self.k) - 1):
-            getattr(self, 'conv{}'.format(i))(x, mesh)
             x, att_mat = getattr(self, 'sa{}'.format(i))(x)
+            x = getattr(self, 'conv{}'.format(i))(x, mesh)
             # x = getattr(self, 'cirLSTM{}'.format(i))(x)
             # x = getattr(self, 'conv{}'.format(i))(x, mesh)
             # x = self.relu(x)
@@ -120,6 +123,49 @@ class MeshTransformerNet(nn.Module):
         x = x.reshape(x.shape[0], -1)
         x = self.fc(x)
         return x
+
+
+
+# class MeshConvNet(nn.Module):
+#     """Network for learning a global shape descriptor (classification)
+#     """
+#     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
+#                  nresblocks=3):
+#         super(MeshConvNet, self).__init__()
+#         self.k = [nf0] + conv_res
+#         self.res = [input_res] + pool_res
+#         norm_args = get_norm_args(norm_layer, self.k[1:])
+#
+#         for i, ki in enumerate(self.k[:-1]):
+#             setattr(self, 'sa{}'.format(i), MeshSA(ki, 64, 35))
+#             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
+#             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
+#             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.k[i + 1]))
+#             # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
+#
+#
+#         self.gp = torch.nn.AvgPool1d(self.res[-1])
+#         # self.gp = torch.nn.MaxPool1d(self.res[-1])
+#         self.fc1 = nn.Linear(self.k[-1], fc_n)
+#         self.fc2 = nn.Linear(fc_n, nclasses)
+#
+#         print(self)
+#
+#     def forward(self, x, mesh):
+#
+#         for i in range(len(self.k) - 1):
+#             x, sa_mat = getattr(self, 'sa{}'.format(i))(x)
+#             x = getattr(self, 'conv{}'.format(i))(x, mesh)
+#             x = F.relu(getattr(self, 'norm{}'.format(i))(x))
+#             x = getattr(self, 'sa_pool{}'.format(i))(x, mesh, sa_mat)
+#             # x = getattr(self, 'pool{}'.format(i))(x, mesh)
+#
+#         x = self.gp(x)
+#         x = x.view(-1, self.k[-1])
+#
+#         x = F.relu(self.fc1(x))
+#         x = self.fc2(x)
+#         return x
 
 
 net = MeshTransformerNet().to(device)
