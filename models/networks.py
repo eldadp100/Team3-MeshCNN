@@ -186,14 +186,14 @@ class MeshConvNet(nn.Module):
     """Network for learning a global shape descriptor (classification)
     """
     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
-                 nresblocks=3):
+                 nresblocks=3, embd_size=64, num_heads=2, window_size=25):
         super(MeshConvNet, self).__init__()
         self.k = [nf0] + conv_res
         self.res = [input_res] + pool_res
         norm_args = get_norm_args(norm_layer, self.k[1:])
 
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, 64, 35))
+            setattr(self, 'sa{}'.format(i), MeshSA(ki, embd_size, window_size, num_heads))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
