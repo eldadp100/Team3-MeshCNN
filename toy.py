@@ -76,43 +76,33 @@ norm_layer = functools.partial(nn.GroupNorm, affine=True, num_groups=1)
 
 
 class MeshTransformerNet(nn.Module):
-    """Network for learning a global shape descriptor (classification)
-    """
-    def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
-                 nresblocks=3):
-        super(MeshConvNet, self).__init__()
-        self.k = [nf0] + conv_res
-        self.res = [input_res] + pool_res
-        # norm_args = get_norm_args(norm_layer, self.k[1:])
+    """ Mesh Transformer """
 
+    def __init__(self, embd_size=16, sa_window_size=10):  # TODO: sa_window_size
+        super(MeshTransformerNet, self).__init__()
+        self.k = [5, 10, 20, 40]
+        self.res = [600, 450, 300, 210]
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, 64, 35))
-            setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
-            # setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
-            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.k[i + 1]))
-            # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
-
+            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, 64, 10))
+            setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1]))
+            setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
-        self.fc1 = nn.Linear(self.k[-1], fc_n)
-        self.fc2 = nn.Linear(fc_n, nclasses)
-
-        print(self)
+        self.fc = nn.Linear(self.k[-1], 35)
+        self.relu = nn.ReLU()
 
     def forward(self, x, mesh):
-
         for i in range(len(self.k) - 1):
             x, sa_mat = getattr(self, 'sa{}'.format(i))(x)
             x = getattr(self, 'conv{}'.format(i))(x, mesh)
-            x = nn.ReLU()(getattr(self, 'norm{}'.format(i))(x))
+            # x = nn.ReLU()(getattr(self, 'norm{}'.format(i))(x))
             x = getattr(self, 'sa_pool{}'.format(i))(x, mesh, sa_mat)
             # x = getattr(self, 'pool{}'.format(i))(x, mesh)
 
         x = self.gp(x)
         x = x.view(-1, self.k[-1])
 
-        x = nn.ReLU()(self.fc1(x))
-        x = self.fc2(x)
+        x = self.fc(x)
         return x
 
 

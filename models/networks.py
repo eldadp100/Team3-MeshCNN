@@ -144,15 +144,7 @@ class MeshConvNet(nn.Module):
         norm_args = get_norm_args(norm_layer, self.k[1:])
 
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, self.sa_embd_size, self.sa_window))
-            setattr(self, 'cirLSTM{}'.format(i),
-                    CircularMeshLSTM(ki, self.lstm_hidden_size, self.k[i + 1], self.lstm_num_layers))
-            # if i> 0:
-            #     setattr(self, 'sa_norm{}'.format(i), norm_layer(**norm_args[i-1]))
-            # setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
-            setattr(self, 'conv_norm{}'.format(i), norm_layer(**norm_args[i]))
-            setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, embd_size, window_size, num_heads))
+            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, embd_size, window_size, num_heads))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))

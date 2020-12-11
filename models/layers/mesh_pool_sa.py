@@ -185,16 +185,16 @@ class MeshPoolSA(nn.Module):
 
     def __build_queue(self, features, edges_count, mesh_index):
         # adapt input to be a batch
-        to_adapt = len(features.shape) == 2
-        if to_adapt:
-            features = features.unsqueeze(-1)
-        features = features.view(features.shape[0], -1)
+        # to_adapt = len(features.shape) == 2
+        # if to_adapt:
+        #     features = features.unsqueeze(-1)
+        # features = features.view(features.shape[0], -1)
 
         # delete edges with smallest norm
         # squared_magnitude = torch.sum(features * features, 0)
         # [[a], [b]]
         # change: pooling criterion changed to income attention scores
-        magnitude = torch.sum(self.sa_matrix[mesh_index], dim=1)
+        magnitude = torch.sum(self.sa_matrix[mesh_index], dim=-1)
 
         if magnitude.shape[-1] != 1:
             magnitude = magnitude.unsqueeze(-1)
