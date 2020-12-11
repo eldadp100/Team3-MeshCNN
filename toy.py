@@ -48,10 +48,10 @@ print(mesh.edges_count)
 
 import torch
 from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
-from models.layers.mesh_self_attention import MeshSA
+from models.layers.mesh_self_attention import MeshSelfAttention
 
 # from models.layers.mesh_conv_old import MeshConv
-sa = MeshSA(5, 5, 10)
+sa = MeshSelfAttention(5, 5, 10)
 mc = MeshConv(5, 15)
 # a = torch.rand(1, 750, 5)
 import pickle
@@ -74,8 +74,6 @@ norm_layer = functools.partial(nn.GroupNorm, affine=True, num_groups=1)
 
 
 
-
-
 class MeshTransformerNet(nn.Module):
     """ Mesh Transformer """
 
@@ -86,14 +84,14 @@ class MeshTransformerNet(nn.Module):
 
         self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
         self.k[0] = embd_size
-        self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
+        self.sa_layer = MeshSelfAttention(self.k[0], self.k[0], window_size=sa_window_size)
         self.dropout = nn.Dropout(p=0.2)
+
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=sa_window_size))
+            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, ki, window_size=sa_window_size))
             setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, 220, self.k[i+1], 1))
             setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
-
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
         self.fc = nn.Linear(self.k[-1], 35)

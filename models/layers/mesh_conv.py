@@ -32,6 +32,7 @@ class MeshEdgeEmbeddingLayer(nn.Module):
         x = x.permute(0, 2, 1)
         return self.lin(x).permute(0, 2, 1)
 
+
 #
 # class MeshConv(nn.Module):
 #     """ Computes convolution between edges and 4 incident (1-ring) edge neighbors
@@ -202,37 +203,6 @@ class MeshConv(nn.Module):
         padded_gemm = F.pad(padded_gemm, (0, 0, 0, xsz - m.edges_count), "constant", 0)
         padded_gemm = padded_gemm.unsqueeze(0)
         return padded_gemm
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## Legacy
 # class MeshConv(nn.Module):
