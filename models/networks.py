@@ -4,7 +4,7 @@ from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
 from models.layers.mesh_conv import MeshConv, MeshEdgeEmbeddingLayer
-from models.layers.mesh_self_attention import MeshSA
+from models.layers.mesh_self_attention import MeshSelfAttention
 from models.layers.mesh_circular_layer import CircularMeshLSTM
 import torch.nn.functional as F
 from models.layers.mesh_pool import MeshPool
@@ -97,6 +97,8 @@ def init_net(net, init_type, init_gain, gpu_ids):
         assert (torch.cuda.is_available())
         net.cuda(gpu_ids[0])
         net = net.cuda()
+        print(torch.cuda.device_count())
+        print(gpu_ids)
         net = torch.nn.DataParallel(net, gpu_ids)
     if init_type != 'none':
         init_weights(net, init_type, init_gain)
@@ -131,57 +133,6 @@ def define_loss(opt):
     return loss
 
 
-##############################################################################
-# Classes For Classification / Segmentation Networks
-##############################################################################
-#
-# class MeshConvNet(nn.Module):
-#     """Network for learning a global shape descriptor (classification)
-#     """
-#
-#     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
-#                  nresblocks=3, embd_size=16, sa_window_size=10):  # TODO: sa_window_size
-#         super(MeshConvNet, self).__init__()
-#         self.k = [nf0] + conv_res
-#         self.res = [input_res] + pool_res
-#         norm_args = get_norm_args(norm_layer, self.k[1:])
-#
-#         self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
-#         self.k[0] = embd_size
-#         self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
-#         self.dropout = nn.Dropout(p=0.2)
-#         for i, ki in enumerate(self.k[:-1]):
-#             setattr(self, 'sa{}'.format(i), MeshSA(ki, ki, window_size=35))
-#             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
-#             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
-#             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.k[i + 1]))
-#             # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
-#
-#         self.gp = torch.nn.AvgPool1d(self.res[-1])
-#         # self.gp = torch.nn.MaxPool1d(self.res[-1])
-#         self.fc1 = nn.Linear(self.k[-1], fc_n)
-#         self.fc2 = nn.Linear(fc_n, nclasses)
-#
-#     def forward(self, x, mesh):
-#         x = self.edges_embedding(x)
-#         x, _ = self.sa_layer(x)
-#         for i in range(len(self.k) - 1):
-#             x, sa_mat = getattr(self, 'sa{}'.format(i))(x)
-#             x = getattr(self, 'conv{}'.format(i))(x, mesh)
-#             x = F.relu(x)
-#             x = self.dropout(x)
-#             x = getattr(self, 'norm{}'.format(i))(x)
-#             x = getattr(self, 'sa_pool{}'.format(i))(x, sa_mat)
-#             # x = getattr(self, 'pool{}'.format(i))(x, mesh)
-#
-#         x = self.gp(x)
-#         x = x.view(-1, self.k[-1])
-#
-#         x = F.relu(self.fc1(x))
-#         x = self.fc2(x)
-#         return x
-
-
 class MeshConvNet(nn.Module):
     """Network for learning a global shape descriptor (classification)
     """
@@ -193,12 +144,19 @@ class MeshConvNet(nn.Module):
         norm_args = get_norm_args(norm_layer, self.k[1:])
 
         for i, ki in enumerate(self.k[:-1]):
+            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, self.sa_embd_size, self.sa_window))
+            setattr(self, 'cirLSTM{}'.format(i),
+                    CircularMeshLSTM(ki, self.lstm_hidden_size, self.k[i + 1], self.lstm_num_layers))
+            # if i> 0:
+            #     setattr(self, 'sa_norm{}'.format(i), norm_layer(**norm_args[i-1]))
+            # setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
+            setattr(self, 'conv_norm{}'.format(i), norm_layer(**norm_args[i]))
+            setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
             setattr(self, 'sa{}'.format(i), MeshSA(ki, embd_size, window_size, num_heads))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
             # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
-
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
@@ -224,96 +182,8 @@ class MeshConvNet(nn.Module):
         return x
 
 
-# class MeshConvNet(nn.Module):
-#     """Network for learning a global shape descriptor (classification)
-#     """
-#
-#     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
-#                  nresblocks=3):
-#         super(MeshConvNet, self).__init__()
-#         self.k = [nf0] + conv_res
-#         self.res = [input_res] + pool_res
-#         norm_args = get_norm_args(norm_layer, self.k[1:])
-#         self.sa_embd_size = self.lstm_hidden_size = 64
-#         self.sa_window = 20
-#         self.dropout = nn.Dropout(p=0.5)
-#         self.lstm_num_layers = 2
-#
-#         for i, ki in enumerate(self.k[:-1]):
-#             # setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, self.sa_window))
-#             setattr(self, 'cirLSTM{}'.format(i), CircularMeshLSTM(ki, self.lstm_hidden_size, self.k[i+1], self.lstm_num_layers))
-#             # if i> 0:
-#             #     setattr(self, 'sa_norm{}'.format(i), norm_layer(**norm_args[i-1]))
-#             # setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
-#             setattr(self, 'conv_norm{}'.format(i), norm_layer(**norm_args[i]))
-#             setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
-#
-#         self.gp = torch.nn.AvgPool1d(self.res[-1])
-#         # self.gp = torch.nn.MaxPool1d(self.res[-1])
-#         self.fc1 = nn.Linear(self.k[-1], fc_n)
-#         self.fc2 = nn.Linear(fc_n, nclasses)
-#         print(self)
-#
-#     def forward(self, x, mesh):
-#
-#         for i in range(len(self.k) - 1):
-#             x = getattr(self, 'sa{}'.format(i))(x)  # local information routing
-#             x = getattr(self, 'cirLSTM{}'.format(i))(x)  # try to globalize the information routing
-#             # x = F.relu(x)
-#             # if i> 0:
-#             #     x = F.relu(getattr(self, 'sa_norm{}'.format(i))(x))  # local information routing
-#             # x = getattr(self, 'conv{}'.format(i))(x, mesh)
-#             # x = self.dropout(x)
-#             x = getattr(self, 'conv_norm{}'.format(i))(x.unsqueeze(-1))
-#             x = F.relu(x)
-#             x = getattr(self, 'pool{}'.format(i))(x, mesh)
-#
-#         x = self.gp(x)
-#         x = x.view(-1, self.k[-1])
-#
-#         x = F.relu(self.fc1(x))
-#         x = self.fc2(x)
-#         return x
-
-
 class MeshTransformerNet(nn.Module):
-    """ Mesh Transformer """
-
-    def __init__(self, embd_size=16, sa_window_size=10):
-        super(MeshTransformerNet, self).__init__()
-        self.k = [5, 40, 100, 150, 40]
-        self.res = [1000, 700, 500, 250]
-
-        self.edges_embedding = MeshEdgeEmbeddingLayer(self.k[0], embd_size)
-        self.k[0] = embd_size
-        self.sa_layer = MeshSA(self.k[0], self.k[0], window_size=sa_window_size)
-        self.dropout = nn.Dropout(p=0.2)
-        self.sa_embd_size = 64
-
-        for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSA(ki, self.sa_embd_size, window_size=sa_window_size))
-            setattr(self, 'conv{}'.format(i), MeshConv(ki, self.k[i + 1]))
-            setattr(self, 'pool{}'.format(i), MeshPool(self.res[i]))
-
-        self.gp = torch.nn.AvgPool1d(self.res[-1])
-        # self.gp = torch.nn.MaxPool1d(self.res[-1])
-        self.fc = nn.Linear(self.k[-1], 35)
-        self.relu = nn.ReLU()
-
-    def forward(self, x, mesh):
-        x = self.edges_embedding(x)
-        x = self.sa_layer(x)
-        for i in range(len(self.k) - 1):
-            x = getattr(self, 'sa{}'.format(i))(x)
-            x = getattr(self, 'conv{}'.format(i))(x, mesh)
-            x = self.relu(x)
-            x = self.dropout(x)
-            x = getattr(self, 'pool{}'.format(i))(x, mesh)
-
-        x = self.gp(x)
-        x = x.view(-1, self.k[-1])
-        x = self.fc(x)
-        return x
+    pass
 
 
 class MResConv(nn.Module):
