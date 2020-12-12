@@ -137,18 +137,17 @@ class MeshConvNet(nn.Module):
     """Network for learning a global shape descriptor (classification)
     """
     def __init__(self, norm_layer, nf0, conv_res, nclasses, input_res, pool_res, fc_n,
-                 nresblocks=3, embd_size=64, num_heads=2, window_size=25):
+                 nresblocks=3, embd_size=64, num_heads=8, window_size=35):
         super(MeshConvNet, self).__init__()
         self.k = [nf0] + conv_res
         self.res = [input_res] + pool_res
         norm_args = get_norm_args(norm_layer, self.k[1:])
 
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, embd_size, window_size, num_heads))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1], nresblocks))
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
+            setattr(self, 'sa{}'.format(i), MeshSelfAttention(self.k[i + 1], embd_size, window_size, num_heads))
             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
-            # setattr(self, 'pool{}'.format(i), MeshPool(self.res[i + 1]))
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
@@ -160,11 +159,10 @@ class MeshConvNet(nn.Module):
     def forward(self, x, mesh):
 
         for i in range(len(self.k) - 1):
-            x, sa_mat = getattr(self, 'sa{}'.format(i))(x)
             x = getattr(self, 'conv{}'.format(i))(x, mesh)
             x = F.relu(getattr(self, 'norm{}'.format(i))(x))
+            _, sa_mat = getattr(self, 'sa{}'.format(i))(x.squeeze(-1))  # apply self attention just for pooling
             x = getattr(self, 'sa_pool{}'.format(i))(x, mesh, sa_mat)
-            # x = getattr(self, 'pool{}'.format(i))(x, mesh)
 
         x = self.gp(x)
         x = x.view(-1, self.k[-1])
