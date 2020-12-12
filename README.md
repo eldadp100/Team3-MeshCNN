@@ -44,11 +44,12 @@ by adding the multi-head self attention layer before the LSTM the accuracy raise
 
 
 ## Results on Human Segmentation
-
-![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_0.jpeg height=80)
-![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_1.jpeg height=80)
-![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_2.jpeg height=80)
-![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_3.jpeg height=80)
+<p>
+<img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_0.jpeg" width="180">
+<img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_1.jpeg" width="150">
+<img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_2.jpeg" width="180">
+<img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_3.jpeg" width="165">
+</p>
 
 
 
