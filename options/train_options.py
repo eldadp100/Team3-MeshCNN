@@ -26,6 +26,6 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument('--no_vis', action='store_true', help='will not use tensorboard')
         self.parser.add_argument('--verbose_plot', action='store_true', help='plots network weights, etc.')
         self.parser.add_argument('--embedding_size', type=int, default=64)
-        self.parser.add_argument('--num_heads', type=int, default=2)
-        self.parser.add_argument('--window_size', type=int, default=25)
+        self.parser.add_argument('--num_heads', type=int, default=8)
+        self.parser.add_argument('--window_size', type=int, default=35)
         self.is_train = True
