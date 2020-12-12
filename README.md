@@ -39,6 +39,19 @@ we see that by using the porposed LSTM layer only (without using anything else) 
 ### Self attention and LSTM
 by adding the multi-head self attention layer before the LSTM the accuracy raised to 
 
+
+
+
+
+## Results on Human Segmentation
+
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_0.jpeg)
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_1.jpeg)
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_2.jpeg)
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_3.jpeg)
+
+
+
 ## Setup
 look at the original repository for more info: ranahanocka/MeshCNN
 ### Installation
@@ -49,7 +62,8 @@ cd MeshCNN
 ```
 - Install dependencies: [PyTorch](https://pytorch.org/) version 1.2. <i> Optional </i>: [tensorboardX](https://github.com/lanpa/tensorboardX) for training plots.
   - Via new conda environment `conda env create -f environment.yml` (creates an environment called meshcnn)
-  
+
+
 ### 3D Classification on CUBES
 Download the dataset
 ```bash
