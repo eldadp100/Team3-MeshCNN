@@ -148,6 +148,7 @@ class MeshConvNet(nn.Module):
             setattr(self, 'norm{}'.format(i), norm_layer(**norm_args[i]))
             setattr(self, 'sa{}'.format(i), MeshSelfAttention(self.k[i + 1], embd_size, window_size, num_heads))
             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
+            # setattr(self, 'cir_LSTM{}'.format(i), CircularMeshLSTM(self.k[i + 1], 64, self.k[i + 1]))
 
         self.gp = torch.nn.AvgPool1d(self.res[-1])
         # self.gp = torch.nn.MaxPool1d(self.res[-1])
@@ -163,6 +164,7 @@ class MeshConvNet(nn.Module):
             x = F.relu(getattr(self, 'norm{}'.format(i))(x))
             _, sa_mat = getattr(self, 'sa{}'.format(i))(x.squeeze(-1))  # apply self attention just for pooling
             x = getattr(self, 'sa_pool{}'.format(i))(x, mesh, sa_mat)
+            # x = getattr(self, 'cir_LSTM{}'.format(i))(x)
 
         x = self.gp(x)
         x = x.view(-1, self.k[-1])
@@ -221,7 +223,7 @@ class MeshEncoderDecoder(nn.Module):
 
 
 class DownConv(nn.Module):
-    def __init__(self, in_channels, out_channels, blocks=0, pool=0):
+    def __init__(self, in_channels, out_channels, blocks=0, pool=0, window_size=50, num_heads=8):
         super(DownConv, self).__init__()
         self.bn = []
         self.pool = None
@@ -234,7 +236,8 @@ class DownConv(nn.Module):
             self.bn.append(nn.InstanceNorm2d(out_channels))
             self.bn = nn.ModuleList(self.bn)
         if pool:
-            self.pool = MeshPool(pool)
+            self.self_attention = MeshSelfAttention(out_channels, 64, window_size=window_size, heads=num_heads)
+            self.pool = MeshPoolSA(pool)
 
     def __call__(self, x):
         return self.forward(x)
@@ -257,7 +260,8 @@ class DownConv(nn.Module):
         before_pool = None
         if self.pool:
             before_pool = x2
-            x2 = self.pool(x2, meshes)
+            _, sa_mat = self.self_attention(x2)
+            x2 = self.pool(x2, meshes, sa_mat)
         return x2, before_pool
 
 

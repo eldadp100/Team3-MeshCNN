@@ -35,6 +35,10 @@ class BaseOptions:
         self.parser.add_argument('--seed', type=int, help='if specified, uses seed')
         # visualization params
         self.parser.add_argument('--export_folder', type=str, default='', help='exports intermediate collapses to this folder')
+        # Self Attention
+        self.parser.add_argument('--embedding_size', type=int, default=64)
+        self.parser.add_argument('--num_heads', type=int, default=8)
+        self.parser.add_argument('--window_size', type=int, default=35)
         #
         self.initialized = True
 

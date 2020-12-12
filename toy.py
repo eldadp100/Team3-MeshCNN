@@ -78,12 +78,12 @@ norm_layer = functools.partial(nn.GroupNorm, affine=True, num_groups=1)
 class MeshTransformerNet(nn.Module):
     """ Mesh Transformer """
 
-    def __init__(self, embd_size=16, sa_window_size=10):  # TODO: sa_window_size
+    def __init__(self, embd_size=16, sa_window_size=17):  # TODO: sa_window_size
         super(MeshTransformerNet, self).__init__()
         self.k = [5, 10, 20, 40]
         self.res = [600, 450, 300, 210]
         for i, ki in enumerate(self.k[:-1]):
-            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, 64, 10))
+            setattr(self, 'sa{}'.format(i), MeshSelfAttention(ki, 64, 17))
             setattr(self, 'conv{}'.format(i), MResConv(ki, self.k[i + 1]))
             setattr(self, 'sa_pool{}'.format(i), MeshPoolSA(self.res[i + 1]))
         self.gp = torch.nn.AvgPool1d(self.res[-1])
