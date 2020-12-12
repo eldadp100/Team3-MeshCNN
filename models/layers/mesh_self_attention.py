@@ -50,9 +50,9 @@ class PatchedSelfAttentionLayer(nn.Module):
             x_patches = torch.cat([x_patches, rest_seq_padding], dim=1)
         x_patches, attention_mat = self.sa_layer(x_patches)
         out = x_patches.reshape(x_patches.shape[0], x_patches.shape[1] * x_patches.shape[2],
-                                x_patches.shape[3])[:seq_size]
+                                x_patches.shape[3])[:, :seq_size, :]
         attention_mat = attention_mat.reshape(attention_mat.shape[0], attention_mat.shape[1] * attention_mat.shape[2],
-                                               attention_mat.shape[3])[:seq_size]
+                                               attention_mat.shape[3])[:, :seq_size, :self.window_size]
         return out, attention_mat
 
 
@@ -62,7 +62,7 @@ class MeshSelfAttention(nn.Module):
         Multi head memory efficient attention for mesh
     """
 
-    def __init__(self, in_size, embd_size, window_size, heads=2):
+    def __init__(self, in_size, embd_size, window_size, heads=8):
         super(MeshSelfAttention, self).__init__()
         self.heads = heads
         self.window_size = window_size
@@ -73,19 +73,20 @@ class MeshSelfAttention(nn.Module):
             else:
                 sa_layer = PatchedSelfAttentionLayer(in_size, embd_size, window_size)
             self.sa_heads.append(sa_layer)
-        self.out_lin = nn.Linear(self.heads, 1)  # TODO: init to 1 / heads
+        # self.out_lin = nn.Linear(self.heads, 1)  # TODO: init to 1 / heads
+        # self.out_lin = nn.Linear(self.heads * in_size, in_size)
 
     def forward(self, edges):
         batch_size, edges_num, edges_features_num = edges.shape
         device = edges.device
         edges = edges.permute(0, 2, 1)  # put seq in place (before elem)
         out = torch.empty((batch_size, edges_features_num, edges_num, self.heads)).to(device)
+        attention_mat = torch.zeros((batch_size, edges_features_num, self.window_size)).to(device)
         for i in range(self.heads):
-            attention_mat = torch.zeros((batch_size, edges_features_num, self.window_size)).to(device)
             out[:, :, :, i], att_mat_i = self.sa_heads[i](edges)
             attention_mat += att_mat_i
         attention_mat /= float(self.heads)
-        out = self.out_lin(out).squeeze(-1)
+        out, _ = torch.max(out, dim=-1)
         out = F.relu(out)
         return out.permute(0, 2, 1).to(device), attention_mat.to(device)  # permute back
 
@@ -93,4 +94,4 @@ class MeshSelfAttention(nn.Module):
 if __name__ == '__main__':
     sa_layer = MeshSelfAttention(10, 21, 12)
     a = torch.rand(32, 10, 100)  # batch_size x elem_size x seq len. seq of 100 elements
-    print(sa_layer(a).shape)
+    print(sa_layer(a)[0].shape)
