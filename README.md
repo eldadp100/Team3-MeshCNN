@@ -28,18 +28,21 @@ We think that combining those ideas with the original mesh convolutional layer m
     * fixed bug in the original code related to BN
  * changed the pooling critiria to first feature value only but it didn't helped - commented
 
+Full transformer vs self attention on pooling only:
+========= Explain here ==================
+
 ## Results on CUBES
-The metioned accuracy is the average of best 5 over 100 epochs. 
+The metioned accuracy is the average of best 5 over 150 epochs executed twice (and average taken). We also mention the accuracy on 100 epochs.
 ### Original
 The original code test accuracy is 93%.
 ### Bottom Line
-with all the changes the test accuracy is  
+Our best model which perform self attention based pooling (and that it - not a full transformer) with test accuracy of 98% (and stable) and the average of best 5 up to 150 is greater than 97%. On 100 epochs it's 96.1%
 ### LSTM
 we see that by using the porposed LSTM layer only (without using anything else) we got test accuracy of 82%
-### Self attention and LSTM
-by adding the multi-head self attention layer before the LSTM the accuracy raised to 
 
-
+## CUBES Results Discussion
+Our method is near the current SOTA. We think that with more hyperparamter tuning we can pass the SOTA (this result is the first we get).
+We saw that full transformer decreased the results compared to using only attention based pooling. It emphesizes the importance of the pooling layer as when the self attention is dedicated to pooling only. The good realy results apeared after epoch 100 and around epoch 200 we got stable results (greater than 98%) and we didn't executed the full transformer for so long. Therefore, we think that this can be the reason for that applying self attention only to the pooling layer overcomed the full transformer (which also changes the input).
 
 
 
