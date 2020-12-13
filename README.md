@@ -14,6 +14,8 @@ p.s. We didn't take any code from the web - we wrote all the code by ourselves.
 
 Request: Because we inversted siginificant time in this we would like to continue working on this more and consider it as a part of the final project also (we inversted much more time than for just HW :) ) 
 
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/clf_cubes.jpeg)
+
 ## Mesh Transformer
 ### General
 We added self attention layer to meshCNN.
@@ -105,6 +107,21 @@ We attach here a table with
 There's more specific discuession in Notes column of the table.
 
 #### Training Plots
+* In the training plots a_b_c means window_size=a, embedding_size=b (of keys and queries), num_heads=c
+* This is our self attention pooling versus MeshCNN
+   * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/clf_cubes.jpeg)
+
+
+* In the following image we see how much the attention hyperparamters are important on CUBES (see the table for more percise analysis). This is of self attention pooling (not a full transformer).
+  * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/sa_pooling_cubes.jpeg)
+
+
+* And this is the same on full transformer.
+  * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/full_transformer_cubes.jpeg)
+
+
+* this is with the LSTM also - original vs self attention pooling vs lstm
+  * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/with_lstm.jpeg)
 
 
 ### Human Segmentation Results
@@ -113,7 +130,6 @@ We see that this benchmark is harder. We also had only 500 train samples which w
 The highest score we got is 92.6% after 313 epochs. We don't know what is the current SOTA in this benchmark so we can't compare.
 Here we see that higher window size does helped (in contrast to CUBES).
 There's more specific discuession in Notes column of the table.
-#### Training Plots
 
 #### Pooling Visualizations
 <p>
@@ -124,7 +140,6 @@ There's more specific discuession in Notes column of the table.
 </p>
 
 ### Shrec Results
-#### Training Plots
 
 #### Discussion
 We see that here the augmentation is important. More percise discussion in at Notes column.
