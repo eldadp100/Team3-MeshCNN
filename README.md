@@ -113,7 +113,7 @@ Here we see that higher window size does helped (in contrast to CUBES).
 There's more specific discuession in Notes column of the table.
 #### Training Plots
 
-### Pooling Visualizations
+#### Pooling Visualizations
 <p>
 <img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_0.jpeg" width="180">
 <img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_1.jpeg" width="150">
