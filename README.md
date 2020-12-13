@@ -8,6 +8,8 @@ We implemented 2 models - on is self attention adaptation to meshCNN which we ca
 
 The attention based model performed very well. I think we are the current SOTA on CUBES (Our test accuracy is 98.9% and the current SOTA is 98.6%. It's important to mention that our method is MeshCNN based and not related to the current SOTA - we got the results while going on different direction and therefore we do think it's an avidance that MeshCNN based model can still be the SOTA).
 
+The LSTM based performed bad.
+
 p.s. We didn't take any code from the web - we wrote all the code by ourselves.
 
 Request: Because we inversted siginificant time in this we would like to continue working on this more and consider it as a part of the final project also (we inversted much more time than for just HW :) ) 
