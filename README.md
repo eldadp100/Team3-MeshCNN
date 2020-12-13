@@ -2,7 +2,7 @@
 
 Competition Results:
 1. On CUBES dataset we got 98.9% test accuracy after 311 epochs (stable result). The average of top 5 in 100 epochs is 97% - the result is verfied in 2 separate executions.
-2. On HUMANS dataset we got 92.4% test accuracy after 128 epochs and 92.6% after 311 epochs. The average of top 5 in first 100 epochs is 92.2% verfied on 2 separate executions.
+2. On HUMANS dataset we got 92.4% test accuracy after 128 epochs and 92.6% after 313 epochs. The average of top 5 in first 100 epochs is 92.2% verfied on 2 separate executions.
 
 We implemented 2 models - on is self attention adaptation to meshCNN which we call "Mesh Transformer" and one is LSTM based mesh walk.
 
@@ -79,24 +79,17 @@ There was a tiny bug in the original code in the batch option ('BatchNorm2D' sho
 2. Changing the pooling critiria to the norm of the first feature only - decreased results.
 3. Adding dropout didn't helped - we used BN that known to replace it.
 
-## Our changes
-We porposed the use of the following two layers that we adapt to the mesh scenario. The first one is self attention layer that has the problem of memory consuming - to handle that we used patched self attention. We implemented a multi head self attention. The second is to use LSTM to go over the mesh edges in some order and rout information from one edge to another. The idea of using LSTM to globalize the patched (local) self attention is first introduced here. We use a circular LSTM which is applying LSTM several times while we keep the state of the previous iteration and use it as a start to the next (different from bidirectional LSTMs but with same motivation).
-We think that combining those ideas with the original mesh convolutional layer might outperform the current SOTA as they give another directions to adapt classical ideas to meshes.
 
- * self attention (/models/layers/mesh_self_attention.py):
-    * implemented based on patched self attention to save memory. 
-    * multi head.
- * LSTM
-    * to globalize the self attention information routing
-    * circular LSTM
- * replaced 2d convolution on neighborhood by fully-connected layer which increased performence and network expesiveness.
- * replaced neighborhood symetric transformations (|a-c|, a+c, |b-d|, b+d, e) with simple average (as in GCN): (a+b+c+d+e)/5
- * we used BN instead GN as BN known to outperform GN - as we don't separate among multiple GPUs (so GN is not needed in our case)
-    * fixed bug in the original code related to BN
- * changed the pooling critiria to first feature value only but it didn't helped - commented
+## Ciscular LSTM based Mesh Walk
+LSTM to go over the mesh edges in some order and rout information from one edge to another. The idea of using LSTM was at start in order to globalize the patched (local) self attention (this approach doesn't exist and we thought is cool). Then we saw that with this layer only (and 0.6M parameters only) we got 80% accuracy on CUBES which proves there's something in this layer that can work. 
 
-Full transformer vs self attention on pooling only:
-========= Explain here ==================
+We use a circular LSTM which is applying LSTM several times while we keep the state of the previous iteration and use it as a start to the next (different from bidirectional LSTMs but with same motivation). The exact motivation here that we want the LSTM to first compute a global information and then use it as start hidden vector - because otherwise the first of elements of the sequence suffer from bad hidden state (that contains no information at start).
+
+### Improvemnets Ideas
+1. Make it to partial and many traverses (i.e. not on the whole mesh) - as done in Mesh Walk paper. 
+2. As there is attention based Deep Walk we can do something similar here when we greedily traverse the graph and each time go the the nearby edge with highest attention degree (defined in MeshTransformer section). 
+3. Use recent advances in Linear Multi Arm Bandits because this setting can be adapted to there.
+
 
 ## Results on CUBES
 The accuracy in the table is an average of the 5 best in 200 epochs (the results for the competion shown at start). 
@@ -109,17 +102,28 @@ The metioned accuracy is the average of best 5 over 150 epochs executed twice (a
 ### Original
 The original code test accuracy is 93%.
 ### Bottom Line
-Our best model which perform self attention based pooling (and that it - not a full transformer) with test accuracy of 98% (and stable) and the average of best 5 up to 150 is greater than 97%. On 100 epochs it's 96.1%
 ### LSTM
 we see that by using the porposed LSTM layer only (without using anything else) we got test accuracy of 82%
 
-## CUBES Results Discussion
-Our method is near the current SOTA. We think that with more hyperparamter tuning we can pass the SOTA (this result is the first we get).
-We saw that full transformer decreased the results compared to using only attention based pooling. It emphesizes the importance of the pooling layer as when the self attention is dedicated to pooling only. The good realy results apeared after epoch 100 and around epoch 200 we got stable results (greater than 98%) and we didn't executed the full transformer for so long. Therefore, we think that this can be the reason for that applying self attention only to the pooling layer overcomed the full transformer (which also changes the input).
+## Results
+### CUBES Results
+Our best model which perform self attention based pooling (not a full transformer) is with test accuracy of 98.9% (and stable) - which we think is the current SOTA now.
+We attach here a table with 
+#### Results Discussion
+* Our method passed the current SOTA by 0.3%. 
+* We saw that full transformer decreased the results compared to using only attention based pooling. It emphesizes the importance of the pooling layer as when the self attention is dedicated to pooling only. 
+* The good results apeared around epoch 200 where we also got stable results. The 98.9% apeared in epoch 311.
+* We already discussed on our thoughts on how to improve the full transformer and the LSTM bsed mesh walk results.
+There's more specific discuession in Notes column of the table.
 
+### Human Segmentation Results
+#### Results Discussion
+We see that this benchmark is harder. We also had only 500 train samples which we think make the training process harder.
+The highest score we got is 92.6% after 313 epochs. We don't know what is the current SOTA in this benchmark so we can't compare.
+Here we see that higher window size does helped (in contrast to CUBES).
+There's more specific discuession in Notes column of the table.
 
-
-## Results on Human Segmentation
+### Pooling Visualizations
 <p>
 <img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_0.jpeg" width="180">
 <img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_1.jpeg" width="150">
@@ -127,7 +131,10 @@ We saw that full transformer decreased the results compared to using only attent
 <img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_3.jpeg" width="165">
 </p>
 
+### Shrec Results
 
+#### Discussion
+We see that here the augmentation is important. More percise discussion in at Notes column.
 
 ## Setup
 look at the original repository for more info: ranahanocka/MeshCNN
