@@ -91,20 +91,6 @@ We use a circular LSTM which is applying LSTM several times while we keep the st
 3. Use recent advances in Linear Multi Arm Bandits because this setting can be adapted to there.
 
 
-## Results on CUBES
-The accuracy in the table is an average of the 5 best in 200 epochs (the results for the competion shown at start). 
-The following table shows the results we got on several hyperparams and different models. The changes in the hyperparameters are colored to make it more readable. 
-The notes column is for discussion on the results we got as we changed the parameters.
-
-
-
-The metioned accuracy is the average of best 5 over 150 epochs executed twice (and average taken). We also mention the accuracy on 100 epochs.
-### Original
-The original code test accuracy is 93%.
-### Bottom Line
-### LSTM
-we see that by using the porposed LSTM layer only (without using anything else) we got test accuracy of 82%
-
 ## Results
 ### CUBES Results
 Our best model which perform self attention based pooling (not a full transformer) is with test accuracy of 98.9% (and stable) - which we think is the current SOTA now.
