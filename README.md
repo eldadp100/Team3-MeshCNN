@@ -22,12 +22,15 @@ We see that using self attention only for pooling and not updating the input (i.
 Just to clarify:
 * suppose self attention layer is the function sa that takes as input the edges list denoted by x and returns new_x, attention_matrix.
 * use it for pooling only:
-  * _, attention_matrix = sa(x)
-  * x = pooling_based_self_attention(x, attention_matrix)
+    ```
+      * _, attention_matrix = sa(x)
+      * x = pooling_based_self_attention(x, attention_matrix)
+    ```
 * use it as "full transformer":
-  * x, attention_matrix = sa(x)
-  * x = pooling_based_self_attention(x, attention_matrix)
- 
+    ```
+      * x, attention_matrix = sa(x)
+      * x = pooling_based_self_attention(x, attention_matrix)
+    ```
 ### Full transformer vs Self Attention based pooling only
 
 
