@@ -116,12 +116,16 @@ We attach here a table with
 * We already discussed on our thoughts on how to improve the full transformer and the LSTM bsed mesh walk results.
 There's more specific discuession in Notes column of the table.
 
+#### Training Plots
+
+
 ### Human Segmentation Results
 #### Results Discussion
 We see that this benchmark is harder. We also had only 500 train samples which we think make the training process harder.
 The highest score we got is 92.6% after 313 epochs. We don't know what is the current SOTA in this benchmark so we can't compare.
 Here we see that higher window size does helped (in contrast to CUBES).
 There's more specific discuession in Notes column of the table.
+#### Training Plots
 
 ### Pooling Visualizations
 <p>
@@ -132,6 +136,7 @@ There's more specific discuession in Notes column of the table.
 </p>
 
 ### Shrec Results
+#### Training Plots
 
 #### Discussion
 We see that here the augmentation is important. More percise discussion in at Notes column.
