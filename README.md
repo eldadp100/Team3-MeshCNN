@@ -98,7 +98,12 @@ We use a circular LSTM which is applying LSTM several times while we keep the st
 ## Results
 ### CUBES Results
 Our best model which perform self attention based pooling (not a full transformer) is with test accuracy of 98.9% (and stable) - which we think is the current SOTA now.
-We attach here a table with 
+We attach here a table with the results:
+
+
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/table_cubes.jpeg)
+
+
 #### Results Discussion
 * Our method passed the current SOTA by 0.3%. 
 * We saw that full transformer decreased the results compared to using only attention based pooling. It emphesizes the importance of the pooling layer as when the self attention is dedicated to pooling only. 
@@ -125,6 +130,9 @@ There's more specific discuession in Notes column of the table.
 
 
 ### Human Segmentation Results
+
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/table_humans.jpeg)
+
 #### Results Discussion
 We see that this benchmark is harder. We also had only 500 train samples which we think make the training process harder.
 The highest score we got is 92.6% after 313 epochs. We don't know what is the current SOTA in this benchmark so we can't compare.
@@ -140,6 +148,8 @@ There's more specific discuession in Notes column of the table.
 </p>
 
 ### Shrec Results
+
+![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/table_shrec.jpeg)
 
 #### Discussion
 We see that here the augmentation is important. More percise discussion in at Notes column.
