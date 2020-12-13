@@ -110,13 +110,19 @@ There's more specific discuession in Notes column of the table.
 * In the training plots a_b_c means window_size=a, embedding_size=b (of keys and queries), num_heads=c
 * This is our self attention pooling versus MeshCNN
    * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/clf_cubes.jpeg)
+
+
 * In the following image we see how much the attention hyperparamters are important on CUBES (see the table for more percise analysis). This is of self attention pooling (not a full transformer).
   * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/sa_pooling_cubes.jpeg)
+
+
 * And this is the same on full transformer.
   * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/full_transformer_cubes.jpeg)
+
+
 * this is with the LSTM also - original vs self attention pooling vs lstm
   * ![alt text](https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/with_lstm.jpeg)
-![alt text](http://url/to/img.png)
+
 
 ### Human Segmentation Results
 #### Results Discussion
