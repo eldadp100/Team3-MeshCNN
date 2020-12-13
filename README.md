@@ -138,7 +138,7 @@ There's more specific discuession in Notes column of the table.
 <img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_2.jpeg" width="180">
 <img src="https://github.com/eldadp100/Team3-MeshCNN/blob/master/results_images/pool_3.jpeg" width="165">
 </p>
-
+SO COOL!!!
 ### Shrec Results
 
 #### Discussion
