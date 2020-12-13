@@ -6,7 +6,11 @@ Competition Results:
 
 We implemented 2 models - on is self attention adaptation to meshCNN which we call "Mesh Transformer" and one is LSTM based mesh walk.
 
+The attention based model performed very well. I think we are the current SOTA on CUBES (Our test accuracy is 98.9% and the current SOTA is 98.6%. It's important to mention that our method is MeshCNN based and not related to the current SOTA - we got the results while going on different direction and therefore we do think it's an avidance that MeshCNN based model can still be the SOTA).
+
 p.s. We didn't take any code from the web - we wrote all the code by ourselves.
+
+Request: Because we inversted siginificant time in this we would like to continue working on this more and consider it as a part of the final project also (we inversted much more time than for just HW :) ) 
 
 ## Mesh Transformer
 ### General
@@ -31,8 +35,15 @@ Just to clarify:
       * x, attention_matrix = sa(x)
       * x = pooling_based_self_attention(x, attention_matrix)
     ```
-### Full transformer vs Self Attention based pooling only
+    
+We use the notation of "Full transformer" and "Self Attention based pooling only" also in the table results. There we see that Self Attention based pooling only outperforms the full transformer.
 
+Possible reasons:
+1. We used patched self attention
+2. We had to give it more training time
+3. Not appropiate initialization
+4. Using bigger datasets
+5. Use matrix multiplication to aggreagate the heads as described in the paper. The problem is that it takes a lot of memory (we used small embedding size to overcome this issue but there it's not possible - there're options for that like 2 layers which will take less parameters but I saw that max operation also works well in practice so we preferd it. it might be the reason).
 
 ### The patching
 Our mesh transformer supports patching to handle memory consumption.
@@ -43,7 +54,30 @@ Possible improvements:
 2. Use better technique (e.g. low rank approximizations of exp(KQ^T)) to overcome the memory issue (e.g. Performers for low rank approx. LinFormer. LongFormer...).
 
 ### Hyperparameters
+* Window size
+* Embedding size
+* Number of self attention heads
 
+We added those to the command line options.
+
+## LSTM based Mesh Walk
+### General
+At the time we tried that we didn't know that there's existing work that does it (which is also the current SOTA on CUBES) 
+
+## Another changes we implemented
+1. Adding edge embedding layer - We think it can help becasue we think that the initialized 5 features can disturb each other in the aggregation. When we tried it didn't increase the results but we still think is a good option   
+2. Changing all the convolutions to fully connected layers (we thought it can increase the network expressiveness but turn out to perform bad)
+
+## Small changes we tried and helped
+1. Batch normalization instead Group normalization. We notice that we run on one GPU and Group norm is good when applying on multiple GPU (becasue then the batch is seperated on the GPUs and each has 1 or 2 samples - not accuracte mean and variance can be calculated). 
+2. We run with larger batch size also (32 instead 16) which also helped (becasue of change 1)  
+
+There was a tiny bug in the original code in the batch option ('BatchNorm2D' should be instead of 'BatchNorm' in norm selection).
+
+## Small changes we tried on the original code and didn't helped 
+1. Changing the aggregation in mesh convolution layer to average instead of symetric transformations and concatatnation. It decreased the results. 
+2. Changing the pooling critiria to the norm of the first feature only - decreased results.
+3. Adding dropout didn't helped - we used BN that known to replace it.
 
 ## Our changes
 We porposed the use of the following two layers that we adapt to the mesh scenario. The first one is self attention layer that has the problem of memory consuming - to handle that we used patched self attention. We implemented a multi head self attention. The second is to use LSTM to go over the mesh edges in some order and rout information from one edge to another. The idea of using LSTM to globalize the patched (local) self attention is first introduced here. We use a circular LSTM which is applying LSTM several times while we keep the state of the previous iteration and use it as a start to the next (different from bidirectional LSTMs but with same motivation).
