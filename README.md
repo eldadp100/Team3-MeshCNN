@@ -1,4 +1,4 @@
-# The Mesh Transformer - Team 3
+# The Mesh Transformer
 
 Competition Results:
 1. On CUBES dataset we got 98.9% test accuracy after 311 epochs (stable result). The average of top 5 in 100 epochs is 97% - the result is verfied in 2 separate executions.
